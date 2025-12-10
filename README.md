@@ -117,10 +117,10 @@ If you find our work useful, please cite our paper:
 ```bibtex
 @article{mvp2024,
   title={MVP: Multiple View Prediction Improves GUI Grounding},
-  author={Yunzhu Zhang, Zeyu Pan, Shuheng Shen, Changhua Meng and Linchao Zhu},
+  author={Yunzhu Zhang, Zeyu Pan, Zhengwen Zeng, Shuheng Shen, Changhua Meng and Linchao Zhu},
   journal={arXiv preprint},
   year={2025},
-  url={https://arxiv.org/abs/xxxx.xxxxx}
+  url={https://arxiv.org/abs/2512.08529}
 }
 ```
 
