@@ -18,14 +18,10 @@ from transformers.utils.import_utils import define_import_structure
 
 
 if TYPE_CHECKING:
-    from .configuration_qwen3_vl import *
-    from .modeling_qwen3_vl import *
-    from .processing_qwen3_vl import *
-    from .video_processing_qwen3_vl import *
-    from .qwen3_vl_moe.configuration_qwen3_vl_moe import *
-    from .qwen3_vl_moe.modeling_qwen3_vl_moe import *
-    from .qwen3_vl_moe.processing_qwen3_vl_moe import *
-    from .qwen3_vl_moe.video_processing_qwen3_vl_moe import *
+    from .configuration_qwen3_vl_moe import *
+    from .modeling_qwen3_vl_moe import *
+    from .processing_qwen3_vl_moe import *
+    from .video_processing_qwen3_vl_moe import *
 else:
     import sys
 
