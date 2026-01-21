@@ -256,6 +256,13 @@ class Qwen3VLMoeTextAttention(nn.Module):
             self.head_dim, eps=config.rms_norm_eps
         )  # thus post q_norm does not need reshape
 
+        # Hook for attention states capture
+        self.attention_hook = None
+
+    def register_attention_hook(self, hook_fn):
+        """注册attention hook"""
+        self.attention_hook = hook_fn
+
     @deprecate_kwarg("past_key_value", new_name="past_key_values", version="4.58")
     def forward(
         self,
@@ -275,6 +282,10 @@ class Qwen3VLMoeTextAttention(nn.Module):
 
         cos, sin = position_embeddings
         query_states, key_states = apply_rotary_pos_emb(query_states, key_states, cos, sin)
+
+        # Call attention hook if registered
+        if self.attention_hook is not None:
+            self.attention_hook(query_states, key_states)
 
         if past_key_values is not None:
             # sin and cos are specific to RoPE models; cache_position needed for the static cache
@@ -1499,6 +1510,21 @@ class Qwen3VLMoeForConditionalGeneration(Qwen3VLMoePreTrainedModel, GenerationMi
         self.model = Qwen3VLMoeModel(config)
         self.lm_head = nn.Linear(config.text_config.hidden_size, config.text_config.vocab_size, bias=False)
 
+        # Initialize captured states for attention-based region selection
+        self.captured_states = {
+            'query_states': None,
+            'key_states': None
+        }
+
+        self.target_token_id = None
+        self.target_layer_idx = None
+
+        # Set default target layer from config if available
+        if hasattr(config, 'target_layer_idx'):
+            self.target_layer_idx = config.target_layer_idx
+        if hasattr(config, 'target_token_id'):
+            self.target_token_id = config.target_token_id
+
         self.post_init()
 
     def get_input_embeddings(self):
@@ -1597,6 +1623,24 @@ class Qwen3VLMoeForConditionalGeneration(Qwen3VLMoePreTrainedModel, GenerationMi
         >>> processor.batch_decode(generated_ids_trimmed, skip_special_tokens=True, clean_up_tokenization_spaces=False)[0]
         "A woman in a plaid shirt sits on a sandy beach at sunset, smiling as she gives a high-five to a yellow Labrador Retriever wearing a harness. The ocean waves roll in the background."
         ```"""
+
+        # yunzhu added for q k capture
+        self.should_capture = (input_ids is not None and
+                         self.target_token_id is not None and
+                         self.target_layer_idx is not None and
+                         input_ids.shape[1] == 1 and
+                         input_ids[0][0] == self.target_token_id)
+
+        # 定义hook函数
+        def attention_hook(query_states, key_states):
+            if self.should_capture:
+                self.captured_states['query_states'] = query_states.clone()
+                self.captured_states['key_states'] = key_states.clone()
+
+        # 注册hook到目标层
+        if self.should_capture and self.target_layer_idx < len(self.model.language_model.layers):
+            target_layer = self.model.language_model.layers[self.target_layer_idx]
+            target_layer.self_attn.register_attention_hook(attention_hook)
 
         outputs = self.model(
             input_ids=input_ids,
@@ -1821,6 +1865,20 @@ class Qwen3VLMoeForConditionalGeneration(Qwen3VLMoePreTrainedModel, GenerationMi
             model_kwargs["encoder_outputs"] = _expand_dict_for_generation(model_kwargs["encoder_outputs"])
 
         return input_ids, model_kwargs
+
+    def get_captured_states(self):
+        """获取捕获的states"""
+        return {
+            'query_states': self.captured_states["query_states"].clone() if self.captured_states["query_states"] is not None else None,
+            'key_states': self.captured_states["key_states"].clone() if self.captured_states["key_states"] is not None else None
+        }
+
+    def clear_captured_states(self):
+        """清空捕获的states"""
+        self.captured_states = {
+            'query_states': None,
+            'key_states': None
+        }
 
 
 __all__ = [
