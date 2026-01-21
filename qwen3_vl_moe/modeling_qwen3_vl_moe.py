@@ -1647,10 +1647,16 @@ class Qwen3VLMoeForConditionalGeneration(Qwen3VLMoePreTrainedModel, GenerationMi
 
         # yunzhu added for q k capture
         # 检查是否应该捕获：第一次forward时就捕获
-        self.should_capture = False
-        if (input_ids is not None and self.target_token_id is not None and
-            self.target_layer_idx is not None and not hasattr(self, '_has_captured')):
-            self.should_capture = True
+        # self.should_capture = False
+        # if (input_ids is not None and self.target_token_id is not None and
+        #     self.target_layer_idx is not None and not hasattr(self, '_has_captured')):
+        #     self.should_capture = True
+        self.should_capture = (input_ids is not None and 
+                         self.target_token_id is not None and 
+                         self.target_layer_idx is not None and
+                         input_ids.shape[1] == 1 and 
+                         input_ids[0][0] == self.target_token_id)
+        
 
         # 定义hook函数
         def attention_hook(query_states, key_states):

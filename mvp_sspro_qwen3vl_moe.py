@@ -109,6 +109,7 @@ def get_top_attention_regions(image, instruction, processor, model, device, top_
     # 计算attention scores
     
     attention_scores = torch.matmul(query_states, key_states.transpose(-2, -1)) / math.sqrt(head_dim)
+    # import pdb; pdb.set_trace()
     attention_scores = attention_scores.squeeze(2)
 
     # 应用softmax得到attention weights
@@ -126,6 +127,7 @@ def get_top_attention_regions(image, instruction, processor, model, device, top_
         visual_attention = attention_weights[0, img_start + 1:img_end]  # 视觉token的attention scores
 
         # 获取top-k attention的token索引
+       
         top_k = min(top_k, len(visual_attention))
         top_indices = torch.topk(visual_attention, top_k).indices.cpu().numpy()
 
@@ -135,6 +137,7 @@ def get_top_attention_regions(image, instruction, processor, model, device, top_
 
         top_positions = []
         for token_idx in top_indices:
+            
             # 将token索引转换为patch坐标
             patch_y = token_idx // num_patches_w
             patch_x = token_idx % num_patches_w
@@ -410,8 +413,8 @@ def process_single_image(json_data, model, processor, base_image_dir, device=Non
         print("=" * 30)
         print("Step 1: Full Image Prediction")
         print("=" * 30)
-
-        full_coord, full_output = process_single_subimage(image, instruction, processor, model, device)
+        with torch.no_grad():
+            full_coord, full_output = process_single_subimage(image, instruction, processor, model, device)
         full_x, full_y = full_coord
         full_in_bbox = is_point_in_bbox((full_x, full_y), bbox)
 
@@ -463,9 +466,10 @@ def process_single_image(json_data, model, processor, base_image_dir, device=Non
             print(f"Region: {region}, Center: {center}")
 
             # 推理当前子图
-            coord, output_text = process_single_subimage(
-                subimage, instruction, processor, model, device, left, top, resize=True
-            )
+            with torch.no_grad():
+                coord, output_text = process_single_subimage(
+                    subimage, instruction, processor, model, device, left, top, resize=True
+                )
 
             pred_x, pred_y = coord
             in_bbox = is_point_in_bbox((pred_x, pred_y), bbox)
