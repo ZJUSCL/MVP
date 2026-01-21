@@ -285,7 +285,7 @@ class Qwen3VLMoeTextAttention(nn.Module):
 
         # Call attention hook if registered
         if self.attention_hook is not None:
-            self.attention_hook(query_states, key_states)
+            self.attention_hook(query_states, repeat_kv(key_states, self.num_key_value_groups))
 
         if past_key_values is not None:
             # sin and cos are specific to RoPE models; cache_position needed for the static cache

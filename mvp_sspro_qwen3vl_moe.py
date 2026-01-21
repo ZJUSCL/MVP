@@ -107,6 +107,7 @@ def get_top_attention_regions(image, instruction, processor, model, device, top_
     batch_size, num_heads, q_len, head_dim = query_states.shape
 
     # 计算attention scores
+    
     attention_scores = torch.matmul(query_states, key_states.transpose(-2, -1)) / math.sqrt(head_dim)
     attention_scores = attention_scores.squeeze(2)
 
@@ -174,6 +175,7 @@ def rank_regions_by_coverage(positions, width, height, max_regions=10, subimage_
         center_x, center_y = center
 
         # 计算区域边界
+        import pdb; pdb.set_trace()
         left = max(0, center_x - sub_w / 2)
         top = max(0, center_y - sub_h / 2)
         right = min(width, left + sub_w)
