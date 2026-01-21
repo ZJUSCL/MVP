@@ -266,12 +266,20 @@ def is_point_in_bbox(point, bbox):
     x1, y1, x2, y2 = bbox
     return x1 <= x <= x2 and y1 <= y <= y2
 
-def process_single_subimage(subimage, instruction, processor, model, device, offset_x=0, offset_y=0, resize=False):
+def process_single_subimage(subimage, instruction, processor, model, device=None, offset_x=0, offset_y=0, resize=False):
     """处理单个子图的推理，返回坐标和输出文本"""
     if hasattr(model, 'module'):
         original_model = model.module
     else:
         original_model = model
+
+    # 如果没有指定device，尝试从模型获取
+    if device is None:
+        try:
+            device = original_model.device
+        except:
+            # 如果模型没有.device属性（多卡分布模式），使用第一个可用设备
+            device = torch.cuda.current_device()
 
     # 调整子图大小
     if resize:
@@ -333,12 +341,20 @@ def are_coordinates_consistent(coord1, coord2, threshold=5):
     x2, y2 = coord2
     return abs(x1 - x2) <= threshold and abs(y1 - y2) <= threshold
 
-def process_single_image(json_data, model, processor, base_image_dir, device, max_inferences=10, consistency_threshold=14):
+def process_single_image(json_data, model, processor, base_image_dir, device=None, max_inferences=10, consistency_threshold=14):
     """处理单个图片的推理流程，统计所有预测点，按相近点分组，选择最大的group"""
     if hasattr(model, 'module'):
         original_model = model.module
     else:
         original_model = model
+
+    # 如果没有指定device，尝试从模型获取
+    if device is None:
+        try:
+            device = original_model.device
+        except:
+            # 如果模型没有.device属性（多卡分布模式），使用第一个可用设备
+            device = torch.cuda.current_device()
 
     try:
         # 读取图片
@@ -756,6 +772,11 @@ def main():
     # 只在主进程打印信息
     if rank == 0:
         print(f"Using {world_size} GPUs")
+        if world_size == 1:
+            print("Mode: Single-process multi-GPU (model will be distributed across all available GPUs)")
+            print(f"Available GPUs: {torch.cuda.device_count()}")
+        else:
+            print("Mode: Multi-process distributed training (data parallel)")
         print(f"Batch size per GPU: {args.batch_size}")
         print(f"Attention layer for region selection: {args.attn_layer}")
         print(f"Target token id for region selection: {args.target_token_id}")
@@ -770,18 +791,30 @@ def main():
     for k, v in token_selector_config.items():
         setattr(config, k, v)
 
-    # 每个进程加载自己的模型实例
-    model = Qwen3VLMoeForConditionalGeneration.from_pretrained(
-        model_path,
-        config=config,
-        torch_dtype=torch.bfloat16,
-        attn_implementation="flash_attention_2",
-        device_map=f"cuda:{gpu}"
-    )
-
-
-    # 将模型移动到当前GPU并包装为DDP
-    model.eval()
+    # 单机多卡模式：使用device_map="auto"自动分布模型到所有可用GPU
+    # 注意：这种模式下不需要使用DDP，也不需要多进程
+    if world_size == 1:
+        print("Loading model with multi-GPU distribution (device_map='auto')...")
+        print("This will automatically distribute the model across all available GPUs")
+        model = Qwen3VLMoeForConditionalGeneration.from_pretrained(
+            model_path,
+            config=config,
+            torch_dtype=torch.bfloat16,
+            attn_implementation="flash_attention_2",
+            device_map="auto"
+        )
+        model.eval()
+    else:
+        # 多机多卡或数据并行模式：每个进程在自己的单卡上加载
+        print(f"Loading model on single GPU (cuda:{gpu}) for distributed training...")
+        model = Qwen3VLMoeForConditionalGeneration.from_pretrained(
+            model_path,
+            config=config,
+            torch_dtype=torch.bfloat16,
+            attn_implementation="flash_attention_2",
+            device_map=f"cuda:{gpu}"
+        )
+        model.eval()
 
     processor = AutoProcessor.from_pretrained(
         model_path,
@@ -833,7 +866,10 @@ def main():
     for batch in dataloader:
         # 处理批次中的每个样本
         for json_data in batch:
-            result = process_single_image(json_data, model, processor, base_image_dir, gpu, args.max_inferences)
+            # 多卡模式：不传递device参数，让函数自动从模型获取
+            # 单卡分布式模式：传递gpu作为device参数
+            device_arg = gpu if world_size > 1 else None
+            result = process_single_image(json_data, model, processor, base_image_dir, device_arg, args.max_inferences)
             if result is not None:
                 local_results.append(result)
 
