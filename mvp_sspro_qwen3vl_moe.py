@@ -53,6 +53,12 @@ def get_top_attention_regions(image, instruction, processor, model, device, top_
     else:
         original_model = model
 
+    # 清除之前的捕获状态，确保每次都重新捕获
+    if hasattr(original_model, '_has_captured'):
+        delattr(original_model, '_has_captured')
+    if hasattr(original_model, 'clear_captured_states'):
+        original_model.clear_captured_states()
+
     width, height = image.size
 
     # 调整图片大小用于获取attention scores
@@ -92,6 +98,11 @@ def get_top_attention_regions(image, instruction, processor, model, device, top_
     # 获取attention scores
     query_states = captured_states["query_states"]
     key_states = captured_states["key_states"]
+
+    # 检查是否成功捕获
+    if query_states is None or key_states is None:
+        print("Warning: Failed to capture attention states, using default regions")
+        return get_default_subimage_regions(width, height, max_regions), (resized_width, resized_height)
 
     batch_size, num_heads, q_len, head_dim = query_states.shape
 
@@ -815,6 +826,11 @@ def main():
             device_map=f"cuda:{gpu}"
         )
         model.eval()
+
+    # 设置捕获目标token和层（将字符串转换为实际的token ID）
+    model.set_capture_targets(args.target_token_id, args.attn_layer)
+    if rank == 0:
+        print(f"Set capture targets: token_str='{args.target_token_id}' -> token_id={model.target_token_id}, layer_idx={model.target_layer_idx}")
 
     processor = AutoProcessor.from_pretrained(
         model_path,

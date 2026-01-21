@@ -1527,6 +1527,27 @@ class Qwen3VLMoeForConditionalGeneration(Qwen3VLMoePreTrainedModel, GenerationMi
 
         self.post_init()
 
+    def set_capture_targets(self, token_str, layer_idx):
+        """设置要捕获的目标token和层索引"""
+
+        if token_str == ",":
+            self.target_token_id = 11
+        elif token_str == "<|box_end|>":
+            self.target_token_id = 151649
+        elif token_str == "<|box_start|>":
+            self.target_token_id = 151648
+        else:
+            # 尝试从 tokenizer 获取 token ID
+            import warnings
+            warnings.warn(f"Unsupported token string: {token_str}, attempting to use as-is")
+            try:
+                # 如果是数字字符串，转换为整数
+                self.target_token_id = int(token_str)
+            except:
+                self.target_token_id = None
+
+        self.target_layer_idx = layer_idx
+
     def get_input_embeddings(self):
         return self.model.get_input_embeddings()
 
@@ -1625,17 +1646,19 @@ class Qwen3VLMoeForConditionalGeneration(Qwen3VLMoePreTrainedModel, GenerationMi
         ```"""
 
         # yunzhu added for q k capture
-        self.should_capture = (input_ids is not None and
-                         self.target_token_id is not None and
-                         self.target_layer_idx is not None and
-                         input_ids.shape[1] == 1 and
-                         input_ids[0][0] == self.target_token_id)
+        # 检查是否应该捕获：第一次forward时就捕获
+        self.should_capture = False
+        if (input_ids is not None and self.target_token_id is not None and
+            self.target_layer_idx is not None and not hasattr(self, '_has_captured')):
+            self.should_capture = True
 
         # 定义hook函数
         def attention_hook(query_states, key_states):
             if self.should_capture:
                 self.captured_states['query_states'] = query_states.clone()
                 self.captured_states['key_states'] = key_states.clone()
+                # 捕获后设置标志，避免重复捕获
+                self._has_captured = True
 
         # 注册hook到目标层
         if self.should_capture and self.target_layer_idx < len(self.model.language_model.layers):
