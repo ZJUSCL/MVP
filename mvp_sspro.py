@@ -467,30 +467,50 @@ def process_single_image(json_data, model, processor, base_image_dir, device, ma
         print("Step 4: Grouping similar coordinates...")
         print("=" * 30)
         
-        def find_coordinate_groups(predictions, threshold=5):
-            """将相近的坐标点分组"""
+        def find_coordinate_groups_knn(predictions, threshold=5):
+            """使用简单KNN算法进行聚类：所有点互相之间都满足差值条件才在一个组"""
+            if not predictions:
+                return []
+
             groups = []
             assigned = set()
-            
-            for i, pred1 in enumerate(predictions):
+
+            for i in range(len(predictions)):
                 if i in assigned:
                     continue
-                    
-                # 创建新group
-                group = [pred1]
+
+                # 找到所有与当前点相互之间都满足条件的点
+                current_group = [predictions[i]]
                 assigned.add(i)
-                
-                # 查找所有相近的点
-                for j, pred2 in enumerate(predictions):
-                    if j not in assigned and are_coordinates_consistent(pred1["point"], pred2["point"], threshold):
-                        group.append(pred2)
+
+                # 候选点索引列表
+                candidate_indices = [i]
+
+                # 检查所有未分配的点
+                for j in range(len(predictions)):
+                    if j in assigned:
+                        continue
+
+                    # 检查点j与组内所有点是否都满足条件
+                    all_close = True
+                    for k in candidate_indices:
+                        if not are_coordinates_consistent(predictions[k]["point"], predictions[j]["point"], threshold):
+                            all_close = False
+                            break
+
+                    if all_close:
+                        current_group.append(predictions[j])
                         assigned.add(j)
-                
-                groups.append(group)
-            
+                        candidate_indices.append(j)
+
+                groups.append(current_group)
+
+            # 按组大小排序（大的在前）
+            groups.sort(key=lambda x: len(x), reverse=True)
+
             return groups
-        
-        groups = find_coordinate_groups(all_coordinates, consistency_threshold)
+
+        groups = find_coordinate_groups_knn(all_coordinates, consistency_threshold)
         result["groups"] = groups
         
         print(f"Found {len(groups)} coordinate groups:")
@@ -613,17 +633,22 @@ class SequentialDistributedSampler(DistributedSampler):
         super().__init__(dataset, num_replicas=num_replicas, rank=rank, shuffle=False)
         # 不重复采样
         self.drop_last = False
-    
+
     def __iter__(self):
         indices = list(range(len(self.dataset)))
-        
-        # 添加填充以确保所有进程有相同数量的批次
-        indices += indices[:(self.total_size - len(indices))]
-        assert len(indices) == self.total_size
-        
-        # 为当前进程分配子集
-        indices = indices[self.rank:self.total_size:self.num_replicas]
-        return iter(indices)
+
+        # 计算每个rank应该处理的样本数（不重复样本）
+        num_samples = len(indices)
+        samples_per_rank = num_samples // self.num_replicas
+        remainder = num_samples % self.num_replicas
+
+        # 为当前rank分配样本范围
+        start_idx = self.rank * samples_per_rank + min(self.rank, remainder)
+        end_idx = start_idx + samples_per_rank + (1 if self.rank < remainder else 0)
+
+        assigned_indices = indices[start_idx:end_idx]
+
+        return iter(assigned_indices)
 
 def calculate_detailed_statistics(results):
     """计算详细的统计信息，包括按group和ui_type分类的准确率"""

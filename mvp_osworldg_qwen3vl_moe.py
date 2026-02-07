@@ -460,30 +460,50 @@ def process_single_image(json_data, model, processor, base_image_dir, device=Non
         print("Step 4: Grouping similar coordinates...")
         print("=" * 30)
 
-        def find_coordinate_groups(predictions, threshold=5):
-            """将相近的坐标点分组"""
+        def find_coordinate_groups_knn(predictions, threshold=5):
+            """使用简单KNN算法进行聚类：所有点互相之间都满足差值条件才在一个组"""
+            if not predictions:
+                return []
+
             groups = []
             assigned = set()
 
-            for i, pred1 in enumerate(predictions):
+            for i in range(len(predictions)):
                 if i in assigned:
                     continue
 
-                # 创建新group
-                group = [pred1]
+                # 找到所有与当前点相互之间都满足条件的点
+                current_group = [predictions[i]]
                 assigned.add(i)
 
-                # 查找所有相近的点
-                for j, pred2 in enumerate(predictions):
-                    if j not in assigned and are_coordinates_consistent(pred1["point"], pred2["point"], threshold):
-                        group.append(pred2)
-                        assigned.add(j)
+                # 候选点索引列表
+                candidate_indices = [i]
 
-                groups.append(group)
+                # 检查所有未分配的点
+                for j in range(len(predictions)):
+                    if j in assigned:
+                        continue
+
+                    # 检查点j与组内所有点是否都满足条件
+                    all_close = True
+                    for k in candidate_indices:
+                        if not are_coordinates_consistent(predictions[k]["point"], predictions[j]["point"], threshold):
+                            all_close = False
+                            break
+
+                    if all_close:
+                        current_group.append(predictions[j])
+                        assigned.add(j)
+                        candidate_indices.append(j)
+
+                groups.append(current_group)
+
+            # 按组大小排序（大的在前）
+            groups.sort(key=lambda x: len(x), reverse=True)
 
             return groups
 
-        groups = find_coordinate_groups(all_coordinates, consistency_threshold)
+        groups = find_coordinate_groups_knn(all_coordinates, consistency_threshold)
         result["groups"] = groups
 
         print(f"Found {len(groups)} coordinate groups:")
