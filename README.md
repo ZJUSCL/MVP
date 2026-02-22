@@ -1,14 +1,14 @@
 # MVP: Multiple View Prediction Improves GUI Grounding
 
-[![CVPR 2026](https://img.shields.io/badge/CVPR-2026-red.svg)](https://cvpr.thecvf.com/)
 [![arXiv](https://img.shields.io/badge/arXiv-2512.08529-b31b1b.svg)](https://arxiv.org/abs/2512.08529)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+
+**🎉 MVP has been Accepted by CVPR 2026!**
 
 ## 🎯 Overview
 
 **MVP (Multi-View Prediction)** is a training-free framework that addresses the critical issue of **coordinate prediction instability** in GUI grounding models. Our method significantly improves grounding performance by aggregating predictions from multiple carefully crafted views, effectively distinguishing stable coordinates from outliers.
 
-> **🎉 MVP has been Accepted by CVPR 2026!**
 
 ![MVP Framework](assets/framework.png)
 
