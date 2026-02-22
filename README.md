@@ -120,7 +120,7 @@ If you find our work useful, please cite our paper:
 ```bibtex
 @inproceedings{mvp2026,
   title={MVP: Multiple View Prediction Improves GUI Grounding},
-  author={Zhang Yunzhu and Pan Zeyu and Zeng Zhengwen and Shen Shuheng and Meng Changhua and Zhu Linchao},
+  author={Yunzhu Zhang and Zeyu Pan and Zhengwen Zeng and Shuheng Shen and Changhua Meng and Linchao Zhu},
   booktitle={IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
   year={2026},
   url={https://arxiv.org/abs/2512.08529}
