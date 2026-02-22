@@ -4,7 +4,7 @@
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
 <p align="center">
-  <font size="6">🎉 MVP has been Accepted by CVPR 2026!</font>
+  <font size="12">🎉 MVP has been Accepted by CVPR 2026!</font>
 </p>
 
 ## 🎯 Overview
