@@ -1,11 +1,14 @@
-# MVP: Multi-View Prediction for Stable GUI Grounding
+# MVP: Multiple View Prediction Improves GUI Grounding
 
-[![arXiv](https://img.shields.io/badge/arXiv-Paper-<COLOR>.svg)](https://arxiv.org/abs/2512.08529)
+[![CVPR 2026](https://img.shields.io/badge/CVPR-2026-red.svg)](https://cvpr.thecvf.com/)
+[![arXiv](https://img.shields.io/badge/arXiv-2512.08529-b31b1b.svg)](https://arxiv.org/abs/2512.08529)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
 ## 🎯 Overview
 
-MVP (Multi-View Prediction) is a training-free framework that addresses the critical issue of **coordinate prediction instability** in GUI grounding models. Our method significantly improves grounding performance by aggregating predictions from multiple carefully crafted views, effectively distinguishing stable coordinates from outliers.
+**MVP (Multi-View Prediction)** is a training-free framework that addresses the critical issue of **coordinate prediction instability** in GUI grounding models. Our method significantly improves grounding performance by aggregating predictions from multiple carefully crafted views, effectively distinguishing stable coordinates from outliers.
+
+> **🎉 MVP has been Accepted by CVPR 2026!**
 
 ![MVP Framework](assets/framework.png)
 
@@ -115,11 +118,11 @@ We provide four main evaluation scripts for different model configurations:
 If you find our work useful, please cite our paper:
 
 ```bibtex
-@article{mvp2025,
+@inproceedings{mvp2026,
   title={MVP: Multiple View Prediction Improves GUI Grounding},
-  author={Yunzhu Zhang, Zeyu Pan, Zhengwen Zeng, Shuheng Shen, Changhua Meng and Linchao Zhu},
-  journal={arXiv preprint},
-  year={2025},
+  author={Zhang Yunzhu and Pan Zeyu and Zeng Zhengwen and Shen Shuheng and Meng Changhua and Zhu Linchao},
+  booktitle={IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
+  year={2026},
   url={https://arxiv.org/abs/2512.08529}
 }
 ```
